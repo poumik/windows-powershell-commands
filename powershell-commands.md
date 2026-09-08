@@ -1,40 +1,55 @@
 # Windows 11 PowerShell - System Administration & Management Commands
 
-This document contains the most essential PowerShell commands for managing, updating, and troubleshooting Windows 11 and its installed software.
+This repository serves as a comprehensive reference guide for essential Windows 11 PowerShell commands, covering system management, troubleshooting, software maintenance, and networking.
 
-> **Note:** Most of the commands that modify the system require running PowerShell as an Administrator (*Run as Administrator*).
+> **Note:** Most of the commands that modify system states (like updating software, managing services, or changing firewall rules) require running PowerShell as an Administrator (*Run as Administrator*).
+
+## Quick Reference
+| Purpose | Command |
+| :--- | :--- |
+| **PowerShell version** | `$PSVersionTable` |
+| **Find command** | `Get-Command <name>` |
+| **Get help** | `Get-Help <name>` |
+| **Processes** | `Get-Process` |
+| **Services** | `Get-Service` |
+| **IP addresses** | `Get-NetIPAddress` |
+| **Network test** | `Test-NetConnection` |
+| **Event logs** | `Get-WinEvent` |
+| **Installed software** | `winget list` |
+| **Windows updates** | `Get-WindowsUpdate` |
+| **System info** | `Get-ComputerInfo` |
 
 ---
 
 ## 1. Software Management and Updates (Winget)
-Windows 11 includes the built-in Windows Package Manager (`winget`), which is the most powerful way to manage installed software directly from PowerShell.
+Windows 11 includes the built-in Windows Package Manager (`winget`).
 
 ```powershell
-# Search for a specific program to install (e.g., VLC)
+# Search for a specific program to install
 winget search "VLC"
 
 # Install a program
 winget install "VLC media player"
 
-# Install a program silently in the background (no setup windows)
+# Install a program silently in the background
 winget install "Mozilla Firefox" --silent
 
-# Install and automatically accept license agreements (useful for scripts)
+# Install and automatically accept license agreements
 winget install "Program Name" --accept-source-agreements --accept-package-agreements
 
 # List all installed programs on the computer
 winget list
 
-# Filter the list of installed programs by a specific keyword
+# Filter the list of installed programs by a keyword
 winget list "keyword"
 
 # Check for installed programs that have updates available
 winget upgrade
 
-# Update a specific program to its latest version
+# Update a specific program
 winget upgrade "Program Name"
 
-# UPDATE ALL installed programs to their latest versions at once (Highly recommended!)
+# Update all packages that have updates available
 winget upgrade --all
 
 # Uninstall a program
@@ -44,23 +59,26 @@ winget uninstall "Program Name"
 ---
 
 ## 2. Windows Update Management (PSWindowsUpdate)
-While Windows Update has a GUI, it can be fully managed via PowerShell by installing the `PSWindowsUpdate` module.
+`PSWindowsUpdate` is a third-party module from the PowerShell Gallery, not a built-in cmdlet. It allows full management of Windows Updates via CLI.
 
 ```powershell
-# 1. Install the Windows Update module (only required once)
+# Check if the module is already available on your system
+Get-Module -ListAvailable PSWindowsUpdate
+
+# Install the Windows Update module (requires Administrator)
 Install-Module -Name PSWindowsUpdate -Force
 
-# 2. Check for available Windows updates
+# Check for available Windows updates
 Get-WindowsUpdate
 
-# 3. Download and install all available updates, and allow auto-reboot if necessary
+# Download and install all available updates
+# WARNING: -AutoReboot will restart the computer without prompting!
 Install-WindowsUpdate -AcceptAll -AutoReboot
 ```
 
 ---
 
 ## 3. System Repair and Maintenance
-If Windows is crashing or running slow, these commands scan and repair core operating system files.
 
 ```powershell
 # Scan and repair corrupted system files (System File Checker)
@@ -79,7 +97,6 @@ Update-Help -Force
 ---
 
 ## 4. System Information and Performance
-Quick ways to check system status and resource usage.
 
 ```powershell
 # Get comprehensive system info (OS version, BIOS, RAM, etc.)
@@ -91,58 +108,115 @@ Get-Uptime
 # List the top 10 processes consuming the most Memory (RAM)
 Get-Process | Sort-Object WorkingSet -Descending | Select-Object -First 10
 
-# List the top 10 processes consuming the most CPU
+# List processes with the highest accumulated CPU time
 Get-Process | Sort-Object CPU -Descending | Select-Object -First 10
 ```
 
 ---
 
 ## 5. Process and Service Management
-Manage frozen applications and background services.
 
 ```powershell
-# Find a running process by name (e.g., Chrome)
+# Find a running process by name
 Get-Process -Name chrome
 
 # Forcefully close a stuck process
 Stop-Process -Name chrome -Force
 
+# Find a service by name
+Get-Service -Name Spooler
+
 # List all background services that are currently running
 Get-Service | Where-Object Status -eq "Running"
 
-# Restart a specific service (e.g., Print Spooler if printing is stuck)
+# Stop, Start, or Restart a service
+Stop-Service -Name Spooler
+Start-Service -Name Spooler
 Restart-Service -Name Spooler -Force
+
+# Set a service to start automatically on boot
+Set-Service -Name Spooler -StartupType Automatic
 ```
 
 ---
 
-## 6. Network Management and Troubleshooting
-Commands for fixing and analyzing network connections.
+## 6. Networking
 
 ```powershell
-# Flush the DNS cache (helps if specific websites won't load)
+# Test whether a host responds (Ping replacement)
+Test-Connection google.com
+
+# Test a specific TCP port (Excellent for troubleshooting firewall/service issues)
+Test-NetConnection google.com -Port 443
+
+# Show DNS information for a domain
+Resolve-DnsName google.com
+
+# Flush the DNS cache
 Clear-DnsClientCache
 
 # List all IPv4 addresses assigned to this computer
 Get-NetIPAddress -AddressFamily IPv4 | Select-Object IPAddress, InterfaceAlias
 
-# Advanced network connection test (Ping replacement, checks routing and ports)
-Test-NetConnection -ComputerName google.com
+# Show physical and virtual network adapters
+Get-NetAdapter
 
-# Restart a specific network adapter (e.g., Wi-Fi)
-Restart-NetAdapter -Name "Wi-Fi"
+# Show active TCP connections
+Get-NetTCPConnection
+
+# Show the routing table
+Get-NetRoute
 ```
 
 ---
 
-## 7. Disk and Storage Management
-Check drive health and optimize storage.
+## 7. Firewall Management
+
+```powershell
+# Show active firewall profiles (Domain, Private, Public)
+Get-NetFirewallProfile
+
+# Show all currently enabled firewall rules
+Get-NetFirewallRule | Where-Object Enabled -eq True
+```
+
+---
+
+## 8. Windows Defender & Security
+
+```powershell
+# Get Microsoft Defender status and signature versions
+Get-MpComputerStatus
+
+# Start a quick malware scan
+Start-MpScan -ScanType QuickScan
+```
+
+---
+
+## 9. Event Logs
+Crucial for troubleshooting system crashes and application errors.
+
+```powershell
+# List all available event logs on the system
+Get-WinEvent -ListLog *
+
+# Show the latest 50 System events
+Get-WinEvent -LogName System -MaxEvents 50
+
+# Show the latest 50 Application events
+Get-WinEvent -LogName Application -MaxEvents 50
+```
+
+---
+
+## 10. Disk and Storage Management
 
 ```powershell
 # List all volumes/drives and their free space
 Get-Volume
 
-# Optimize SSD drive (runs the TRIM command for the C: drive)
+# Run the TRIM command on an SSD to optimize storage blocks
 Optimize-Volume -DriveLetter C -ReTrim -Verbose
 
 # Show the health status of physical disks
@@ -151,8 +225,34 @@ Get-PhysicalDisk
 
 ---
 
-## 8. Local User Account Management
-Manage local Windows 11 accounts (Requires Pro or Enterprise editions to work fully).
+## 11. Files & Folders
+
+```powershell
+# List files and folders in the current directory
+Get-ChildItem
+
+# Include hidden files
+Get-ChildItem -Force
+
+# Search recursively for a specific file ignoring access denied errors
+Get-ChildItem -Path C:\ -Filter "example.txt" -Recurse -ErrorAction SilentlyContinue
+
+# Copy, Move, and Rename files
+Copy-Item "C:\source\file.txt" "C:\destination\"
+Move-Item "C:\source\file.txt" "C:\destination\"
+Rename-Item "C:\file.txt" "newfile.txt"
+
+# Remove/Delete a file
+Remove-Item "C:\file.txt"
+
+# Show the text contents of a file
+Get-Content "C:\file.txt"
+```
+
+---
+
+## 12. Local User Account Management
+*Note: Uses the `Microsoft.PowerShell.LocalAccounts` module. Best run in a 64-bit PowerShell environment.*
 
 ```powershell
 # List all local users
@@ -163,4 +263,31 @@ New-LocalUser -Name "TestUser" -Description "Temporary account" -NoPassword
 
 # Add a user to the Administrators group
 Add-LocalGroupMember -Group "Administrators" -Member "TestUser"
+```
+
+---
+
+## 13. Environment & PowerShell Basics
+
+```powershell
+# Show the current PowerShell version
+$PSVersionTable
+
+# Show current directory path
+Get-Location
+
+# Change directory
+Set-Location C:\Temp
+
+# Find a command by name
+Get-Command <command_name>
+
+# Find commands related to a specific topic
+Get-Command *network*
+
+# Get detailed help for a command (includes examples)
+Get-Help <command_name> -Detailed
+
+# Show all available aliases (e.g., 'cd', 'ls', 'dir' equivalents)
+Get-Alias
 ```
