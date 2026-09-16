@@ -15,7 +15,11 @@ A quick-reference guide for essential Windows 11 PowerShell commands, covering s
    ```powershell
    winget install Microsoft.PowerShell
    ```
+   > **Note:** `winget` may not be present on every Windows 11 image (e.g., LTSC or debloated builds). Check availability first with `winget --version`.
+
    Commands marked **(PS 7+)** in the guide only run on PowerShell 7 or newer.
+
+   > **Compatibility note:** Some Windows-only modules (`Get-Net*`, `Get-Mp*`, `Get-BitLocker*`, `Get-ScheduledTask`, `Microsoft.PowerShell.LocalAccounts`, etc.) may not load in PowerShell 7+. If a command is missing in PS 7+, try running it in Windows PowerShell 5.1, or verify the module is available for your PowerShell version.
 4. **Mind the permission tags** — each section of the guide is tagged so you know what needs elevation:
 
    | Tag | Meaning |
