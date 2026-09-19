@@ -6,6 +6,8 @@ A comprehensive quick-reference guide for essential Windows 11 system administra
 
 > **Note:** Most of the commands that modify system states (like updating software, managing services, or changing firewall rules) require running PowerShell as an Administrator (*Run as Administrator*).
 
+> **Caution:** Commands marked **WARNING** in this guide can permanently change system state, alter networking, reduce security coverage, or destroy data. Use with caution, and preview high-risk changes with `-WhatIf` where available.
+
 > **Environment note:** This guide is intended for supported Windows 11 systems. Some commands require administrator rights, network access, optional modules, or specific Windows builds. Managed/enterprise images, LTSC builds, and stripped-down or offline installations may differ from consumer installs — `winget`, WinRM, Defender cmdlets, or `PSWindowsUpdate` may be absent or blocked on such systems.
 
 > **Placeholder note:** In examples, `<name>`, `<command_name>`, and similar angle-bracket tokens are placeholders. Do not type the angle brackets literally in PowerShell. Use a real command name or a variable.
@@ -709,7 +711,7 @@ powercfg /list
 
 > **Permission:** Administrator (to enable remoting and for most remote operations)
 
-> **Caveat:** Remoting depends on more than the command itself — it may require the WinRM service (`WinRM`), matching firewall rules (WinRM HTTP/HTTPS inbound), and `TrustedHosts` configuration, especially on workgroup systems or managed networks where domain policies or enterprise firewalls can block it.
+> **Caveat:** Remote administration depends on more than the command itself — it may require WinRM service configuration, matching firewall rules (WinRM HTTP/HTTPS inbound), TrustedHosts settings, and network profile configuration, especially on workgroup systems or enterprise-managed networks where domain policies or firewalls can block it.
 
 ```powershell
 # Enable PowerShell Remoting on the local machine (run on the target computer)

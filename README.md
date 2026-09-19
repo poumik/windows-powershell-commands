@@ -4,6 +4,8 @@ A quick-reference guide for essential Windows 11 system administration commands,
 
 📄 **The guide:** [`powershell-commands.md`](powershell-commands.md) — all commands in one categorized document.
 
+> **Scope note:** This guide includes both PowerShell cmdlets and native Windows commands used in system administration. Not every example is a PowerShell cmdlet — tools like `DISM`, `sfc`, `powercfg`, `winget`, `net`, and `usoclient` are native Windows programs called from PowerShell.
+
 ## Getting Started
 
 1. **Open PowerShell** — press <kbd>Win</kbd> + <kbd>X</kbd> and choose **Terminal (Admin)**, or search for "PowerShell", right-click, and select *Run as Administrator*.
