@@ -2,6 +2,8 @@
 
 Follow this exact order for **any** Windows Update (small monthly patches or massive Insider Preview upgrades) to view live progress and avoid premature reboots.
 
+> **Prerequisite:** Option A and Step 2 use [PSWindowsUpdate](https://www.powershellgallery.com/packages/PSWindowsUpdate), a **third-party module** from the PowerShell Gallery — it is not built into Windows, and installing it requires internet access. On managed, offline, or locked-down systems it may not be available or installation may be blocked. Option B (`usoclient`) and `Get-WindowsUpdateLog` are built into Windows and work without the module.
+
 ## Step 1: Start the Installation (Choose A or B)
 
 Open **PowerShell as Administrator** and choose the correct command based on your update type:

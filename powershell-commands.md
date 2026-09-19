@@ -1,13 +1,17 @@
 # Windows 11 PowerShell - System Administration & Management Commands
 
-A comprehensive reference guide for essential Windows 11 PowerShell commands, covering system management, troubleshooting, software maintenance, and networking.
+A comprehensive quick-reference guide for essential Windows 11 system administration commands, covering system management, troubleshooting, software maintenance, and networking.
+
+> **Scope note:** This guide includes both PowerShell cmdlets and native Windows tools used in system administration (`DISM`, `sfc`, `powercfg`, `winget`, `net`, `usoclient`). Not every example is a PowerShell-native cmdlet — native tools are called from PowerShell the same way, but they are separate programs with their own syntax.
 
 > **Note:** Most of the commands that modify system states (like updating software, managing services, or changing firewall rules) require running PowerShell as an Administrator (*Run as Administrator*).
+
+> **Environment note:** This guide is intended for supported Windows 11 systems. Some commands require administrator rights, network access, optional modules, or specific Windows builds. Managed/enterprise images, LTSC builds, and stripped-down or offline installations may differ from consumer installs — `winget`, WinRM, Defender cmdlets, or `PSWindowsUpdate` may be absent or blocked on such systems.
 
 > **Placeholder note:** In examples, `<name>`, `<command_name>`, and similar angle-bracket tokens are placeholders. Do not type the angle brackets literally in PowerShell. Use a real command name or a variable.
 
 ## Compatibility: PowerShell 5.1 vs 7+
-Windows 11 ships with **Windows PowerShell 5.1** as the default. **PowerShell 7+** is a separate install (`winget install Microsoft.PowerShell`) that adds newer cmdlets and fixes.
+Windows 11 ships with **Windows PowerShell 5.1** as the default. **PowerShell 7+** is a separate install (`winget install Microsoft.PowerShell`) that adds newer cmdlets and improvements. Some commands are only available in PowerShell 6/7+, while others depend on Windows-only modules or features that may not be present in all builds or managed environments.
 
 - Commands marked **(PS 6+)** or **(PS 7+)** will not run in 5.1 (e.g. `Get-Uptime` was introduced in PowerShell 6.0).
 - Check your version with `$PSVersionTable.PSVersion`.
@@ -104,7 +108,7 @@ winget uninstall "Program Name"
 
 > **Permission:** Administrator
 
-`PSWindowsUpdate` is a third-party module from the PowerShell Gallery, not a built-in cmdlet. It allows full management of Windows Updates via CLI. For a complete install → verify → reboot workflow, see [windows-update-in-powershell.md](windows-update-in-powershell.md).
+`PSWindowsUpdate` is a third-party module from the PowerShell Gallery, not a built-in cmdlet. It allows full management of Windows Updates via CLI. Installing it requires internet access, and it may not be available — or installation may be blocked — on managed, offline, or locked-down systems. For a complete install → verify → reboot workflow, see [windows-update-in-powershell.md](windows-update-in-powershell.md).
 
 ```powershell
 # Check if the module is already available on your system
@@ -273,7 +277,8 @@ Get-NetIPConfiguration
 # Show DNS server addresses
 Get-DnsClientServerAddress
 
-# Set DNS server addresses for an interface (requires Administrator; confirm the alias with Get-NetAdapter first)
+# Set DNS server addresses for an interface (requires Administrator; verify the interface alias
+# with Get-NetAdapter first — changing the wrong interface can interrupt connectivity)
 Set-DnsClientServerAddress -InterfaceAlias "Ethernet" -ServerAddresses 1.1.1.1,8.8.8.8
 
 # Restore DNS server addresses to automatic (DHCP)
@@ -340,7 +345,9 @@ Start-MpScan -ScanType QuickScan
 # Show recent threat detections
 Get-MpThreatDetection
 
-# Add a Defender exclusion folder (requires Administrator, use with caution)
+# Add a Defender exclusion folder (requires Administrator)
+# WARNING: use exclusions sparingly — an excluded path is no longer scanned, which reduces
+# protection if the location is shared or untrusted content is written there.
 Add-MpPreference -ExclusionPath "C:\Tools"
 
 # Update the Defender malware signature database
@@ -422,6 +429,7 @@ Repair-Volume -DriveLetter C -Scan
 # Initialize, partition, and format a new disk
 # Note: -AssignDriveLetter picks the next free letter (not guaranteed to be D:),
 # so pipe the new partition into Format-Volume instead of formatting a guessed drive letter.
+# Initialize a new blank disk — wipes the target disk's existing partition table and data
 Initialize-Disk -Number 1
 New-Partition -DiskNumber 1 -UseMaximumSize -AssignDriveLetter | Format-Volume -FileSystem NTFS -NewFileSystemLabel "Data"
 
@@ -622,7 +630,8 @@ Get-BitLockerVolume
 (Get-BitLockerVolume -MountPoint C).KeyProtector
 
 # Enable BitLocker on the C: drive with a recovery password
-# WARNING: save the recovery key somewhere safe (print, USB, cloud) BEFORE encrypting.
+# WARNING: always back up the recovery key in a secure location (print, USB, or cloud) BEFORE
+# enabling BitLocker. If the key is lost, the data on the encrypted drive is unrecoverable.
 # Do not keep the only copy on the encrypted computer.
 Enable-BitLocker -MountPoint C -RecoveryPasswordProtector
 
@@ -673,7 +682,7 @@ Get-FileHash "C:\downloads\setup.exe" -Algorithm SHA256
 > **Permission:** Mixed — local restart/shutdown works for standard users; remote restarts require appropriate permissions (DCOM by default in Windows PowerShell 5.1, WSMan in PowerShell 7+); the `powercfg` reports shown (`/batteryreport`, `/energy`, `/list`) are not documented by Microsoft as requiring elevation — run an elevated session if a report fails.
 
 ```powershell
-# Restart the computer (add -Force to force close applications without saving)
+# Restart the computer (add -Force to force close applications without saving — unsaved work is lost)
 Restart-Computer -Force
 
 # Shut down the computer
@@ -699,6 +708,8 @@ powercfg /list
 ## 18. PowerShell Remoting
 
 > **Permission:** Administrator (to enable remoting and for most remote operations)
+
+> **Caveat:** Remoting depends on more than the command itself — it may require the WinRM service (`WinRM`), matching firewall rules (WinRM HTTP/HTTPS inbound), and `TrustedHosts` configuration, especially on workgroup systems or managed networks where domain policies or enterprise firewalls can block it.
 
 ```powershell
 # Enable PowerShell Remoting on the local machine (run on the target computer)

@@ -1,6 +1,6 @@
 # Windows 11 PowerShell Commands Guide
 
-A quick-reference guide for essential Windows 11 PowerShell commands, covering system management, troubleshooting, software maintenance, and networking. Aimed at administrators and power users.
+A quick-reference guide for essential Windows 11 system administration commands, covering PowerShell cmdlets and native Windows tools for software management, troubleshooting, system maintenance, and networking. Aimed at administrators and power users.
 
 📄 **The guide:** [`powershell-commands.md`](powershell-commands.md) — all commands in one categorized document.
 
@@ -17,6 +17,8 @@ A quick-reference guide for essential Windows 11 PowerShell commands, covering s
    ```
    > **Note:** `winget` may not be present on every Windows 11 image (e.g., LTSC or debloated builds). Check availability first with `winget --version`.
 
+   > **Environment note:** This guide is intended for supported Windows 11 systems. Some commands require administrator rights, network access, optional modules, or specific Windows builds. Managed/enterprise images, LTSC builds, and stripped-down or offline installations may differ from consumer installs — `winget`, WinRM, Defender cmdlets, or `PSWindowsUpdate` may be absent or blocked on such systems.
+
    Commands marked **(PS 6+)** or **(PS 7+)** in the guide only run on PowerShell 6/7 or newer (e.g. `Get-Uptime` was introduced in PowerShell 6.0).
 
    > **Compatibility note:** Some Windows-only modules (`Get-Net*`, `Get-Mp*`, `Get-BitLocker*`, `Get-ScheduledTask`, `Microsoft.PowerShell.LocalAccounts`, etc.) may not load in PowerShell 7+. If a command is missing in PS 7+, try running it in Windows PowerShell 5.1, or verify the module is available for your PowerShell version.
@@ -28,7 +30,7 @@ A quick-reference guide for essential Windows 11 PowerShell commands, covering s
    | **None (read-only)** | Safe to run unelevated |
    | **Mixed** | Queries are read-only; changes need elevation |
 
-> **Note:** The Windows Update section uses [PSWindowsUpdate](https://www.powershellgallery.com/packages/PSWindowsUpdate), a third-party module from the PowerShell Gallery — the guide includes installation steps.
+> **Note:** The Windows Update section uses [PSWindowsUpdate](https://www.powershellgallery.com/packages/PSWindowsUpdate), a third-party module from the PowerShell Gallery (not built into Windows). Installing it requires internet access, and it may not be available — or installation may be blocked — on managed, offline, or locked-down systems. The guide includes installation steps.
 
 ### Windows Update workflow
 
