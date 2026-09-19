@@ -62,6 +62,10 @@ This repo's value is **correctness**. Before adding or changing a command, verif
 - `powercfg /energy` elevation is not documented by Microsoft (only `/systemsleepdiagnostics` and `/systempowerreport` are documented as requiring admin) — keep the softened wording.
 - `Compress-Archive` uses `System.IO.Compression.ZipArchive`, which limits files to 2 GB — this applies to PowerShell 5.1 and 7+ alike.
 - `New-Partition -AssignDriveLetter` does not guarantee a specific letter — pipe the partition into `Format-Volume` instead of formatting a guessed drive letter.
+- Section 3 is **Mixed**, not Administrator: `Clear-RecycleBin` clears the current user's Recycle Bin and works unelevated; `Update-Help` usually works unelevated (may need elevation/internet).
+- `BackupToAAD-BitLockerKeyProtector` backs up to Microsoft Entra ID (work/school) only — personal-Microsoft-account escrow applies to the automatic "device encryption" feature, not to `Enable-BitLocker`; do not claim automatic MSA escrow for Enable-BitLocker.
+- `Get-WindowsUpdateLog` generates a static snapshot log — it is not a live stream.
+- Compatibility wording: Windows-only modules "may be unavailable, behave differently, or require compatibility loading" in PS 7+ — do not claim they always fail.
 
 ## Workflow
 
