@@ -18,7 +18,7 @@ Windows 11 ships with **Windows PowerShell 5.1** as the default. **PowerShell 7+
 - Commands marked **(PS 6+)** or **(PS 7+)** will not run in 5.1 (e.g. `Get-Uptime` was introduced in PowerShell 6.0).
 - Check your version with `$PSVersionTable.PSVersion`.
 - Each section heading is followed by a **Permission** tag: **Administrator**, **None (read-only)**, or **Mixed** (queries are read-only, changes need elevation).
-- Some Windows-only modules (`Get-Net*`, `Get-Mp*`, `Get-BitLocker*`, `Get-ScheduledTask`, `Microsoft.PowerShell.LocalAccounts`, etc.) may not load in PowerShell 7+. If a cmdlet is missing in PS 7+, run it in Windows PowerShell 5.1 or verify the module is available.
+- Some Windows-only modules (`Get-Net*`, `Get-Mp*`, `Get-BitLocker*`, `Get-ScheduledTask`, `Microsoft.PowerShell.LocalAccounts`, etc.) may be unavailable, behave differently, or require compatibility loading (`Import-Module ... -UseWindowsPowerShell`) in PowerShell 7+. If a cmdlet is missing, verify the module is available, or run the command in Windows PowerShell 5.1.
 
 ## Contents
 1. [Software Management and Updates (Winget)](#1-software-management-and-updates-winget)
@@ -143,12 +143,13 @@ Get-WUHistory
 Get-WUInstallerStatus
 
 # Check if a reboot is required to complete installed updates (-Silent returns plain $true/$false)
+# PSWindowsUpdate cmdlet — requires the module installed and imported
 Get-WURebootStatus -Silent
 
 # Hide an update by KB article ID
 Hide-WindowsUpdate -KBArticleID KB123456
 
-# Uninstall an update by KB article ID (canonical cmdlet; alias: Get-WUUninstall)
+# Uninstall an update by KB article ID (PSWindowsUpdate cmdlet; canonical name; alias: Get-WUUninstall)
 Remove-WindowsUpdate -KBArticleID KB123456
 ```
 
@@ -156,10 +157,11 @@ Remove-WindowsUpdate -KBArticleID KB123456
 
 ## 3. System Repair and Maintenance
 
-> **Permission:** Administrator
+> **Permission:** Mixed — `DISM` and `sfc` require an elevated session; `Clear-RecycleBin` clears the current user's Recycle Bin and works unelevated; `Update-Help` usually works unelevated but may need elevation and internet access.
 
 ```powershell
 # Repair the Windows image from Windows Update first (DISM - recommended before SFC)
+# Docs: https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/repair-a-windows-image
 DISM /Online /Cleanup-Image /RestoreHealth
 
 # Scan and repair corrupted system files (System File Checker - run after DISM)
@@ -318,13 +320,13 @@ Get-NetFirewallProfile
 # Show all currently enabled firewall rules (native parameter - faster than Where-Object)
 Get-NetFirewallRule -Enabled True
 
-# Create an inbound firewall rule
+# Create an inbound firewall rule (changes security posture — verify port and scope before opening)
 New-NetFirewallRule -DisplayName "Allow HTTP" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow
 
-# Remove a firewall rule by display name
+# Remove a firewall rule by display name (can disconnect services relying on it)
 Remove-NetFirewallRule -DisplayName "Allow HTTP"
 
-# Enable or disable firewall profiles
+# Enable or disable firewall profiles (disabling a profile reduces protection on that network)
 Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled True
 ```
 
@@ -426,16 +428,19 @@ Get-StorageReliabilityCounter
 # Scan a volume for file system errors (read-only check, no repair)
 Repair-Volume -DriveLetter C -Scan
 
-# WARNING: the following commands destroy data. Verify disk numbers with Get-Disk / Get-Partition / Get-Volume first.
+# WARNING: the following commands destroy data. Before continuing, confirm the intended disk,
+# partition, and volume with Get-Disk, Get-Partition, and Get-Volume — a wrong number wipes the wrong disk.
 
 # Initialize, partition, and format a new disk
 # Note: -AssignDriveLetter picks the next free letter (not guaranteed to be D:),
 # so pipe the new partition into Format-Volume instead of formatting a guessed drive letter.
 # Initialize a new blank disk — wipes the target disk's existing partition table and data
-Initialize-Disk -Number 1
-New-Partition -DiskNumber 1 -UseMaximumSize -AssignDriveLetter | Format-Volume -FileSystem NTFS -NewFileSystemLabel "Data"
+Initialize-Disk -Number <disk-number>
+New-Partition -DiskNumber <disk-number> -UseMaximumSize -AssignDriveLetter | Format-Volume -FileSystem NTFS -NewFileSystemLabel "Data"
 
-# Resize a partition (warning: -Size sets the new size — a value smaller than the current size shrinks the partition and its data)
+# Resize a partition
+# Warning: -Size is the resulting size — a value smaller than the current size shrinks the
+# partition (incorrect use risks data loss); verify the target partition first.
 Resize-Partition -DriveLetter C -Size 100GB
 ```
 
@@ -509,7 +514,7 @@ New-LocalUser -Name "TestUser" -Description "Temporary account" -NoPassword
 $password = Read-Host "Enter password" -AsSecureString
 New-LocalUser -Name "ExampleUser" -Password $password
 
-# Add a user to the Administrators group
+# Add a user to the Administrators group (grants full admin rights — verify the account first)
 Add-LocalGroupMember -Group "Administrators" -Member "TestUser"
 
 # CIM alternative that works in more PowerShell versions
@@ -525,7 +530,7 @@ net user
 # Create a new local user (prompts for password)
 net user TestUser * /add
 
-# Add a user to the Administrators group
+# Add a user to the Administrators group (grants full admin rights)
 net localgroup Administrators TestUser /add
 ```
 
@@ -634,11 +639,16 @@ Get-BitLockerVolume
 # Enable BitLocker on the C: drive with a recovery password
 # WARNING: always back up the recovery key in a secure location (print, USB, or cloud) BEFORE
 # enabling BitLocker. If the key is lost, the data on the encrypted drive is unrecoverable.
-# Do not keep the only copy on the encrypted computer.
+# Do not keep the only copy on the encrypted computer. In organizational environments, key
+# escrow may be configured through Microsoft Entra ID or management policy — verify the key
+# is actually backed up before relying on it.
 Enable-BitLocker -MountPoint C -RecoveryPasswordProtector
 
-# Back up the recovery password to Microsoft Entra ID (work/school accounts;
-# personal Microsoft account keys are escrowed automatically instead)
+# Back up the recovery password to Microsoft Entra ID (work/school accounts only — this cmdlet
+# does not upload to a personal Microsoft account; personal-account escrow applies to the
+# automatic "device encryption" feature, not to Enable-BitLocker).
+# Note: requires an existing recovery-password protector on the volume — if $rp is empty,
+# the backup cannot run.
 $BLV = Get-BitLockerVolume -MountPoint C
 $rp = $BLV.KeyProtector | Where-Object KeyProtectorType -eq 'RecoveryPassword'
 BackupToAAD-BitLockerKeyProtector -MountPoint C -KeyProtectorId $rp.KeyProtectorId
@@ -687,7 +697,7 @@ Get-FileHash "C:\downloads\setup.exe" -Algorithm SHA256
 # Restart the computer (add -Force to force close applications without saving — unsaved work is lost)
 Restart-Computer -Force
 
-# Shut down the computer
+- Shut down the computer (-Force closes applications without saving — unsaved work is lost)
 Stop-Computer -Force
 
 # Restart or shut down a remote computer
@@ -711,7 +721,7 @@ powercfg /list
 
 > **Permission:** Administrator (to enable remoting and for most remote operations)
 
-> **Caveat:** Remote administration depends on more than the command itself — it may require WinRM service configuration, matching firewall rules (WinRM HTTP/HTTPS inbound), TrustedHosts settings, and network profile configuration, especially on workgroup systems or enterprise-managed networks where domain policies or firewalls can block it.
+> **Caveat:** Remote administration depends on more than the command itself — it may require WinRM service configuration, matching firewall rules (WinRM HTTP/HTTPS inbound), TrustedHosts settings, and network profile configuration, especially on workgroup systems or enterprise-managed networks where domain policies or firewalls can block it. `Enable-PSRemoting -Force` does not guarantee remoting works in every environment. Requirements: [about_Remote_Requirements](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_remote_requirements).
 
 ```powershell
 # Enable PowerShell Remoting on the local machine (run on the target computer)
