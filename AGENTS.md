@@ -4,7 +4,7 @@ Guidance for AI coding agents (Copilot, Codex, Claude, OpenCode, etc.) maintaini
 
 ## Project Overview
 
-- **What it is:** A documentation-only repository — a curated quick-reference guide of Windows 11 PowerShell commands for system administration and management.
+- **What it is:** A documentation-only repository — a curated quick-reference guide of Windows 11 system administration commands (PowerShell cmdlets and native Windows commands) for system administration and management.
 - **Primary artifact:** [`powershell-commands.md`](powershell-commands.md) — a single, self-contained Markdown document with 18 numbered sections of categorized command snippets.
 - **Supporting files:**
   - [`README.md`](README.md) — repo landing page: getting started, linked table of contents, license, disclaimer.
