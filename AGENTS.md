@@ -54,6 +54,7 @@ This repo's value is **correctness**. Before adding or changing a command, verif
 - `Microsoft.PowerShell.LocalAccounts` is **not** removed in Windows 11 24H2 — the `net user` commands are just classic equivalents.
 - `Clear-DnsClientCache` runs unelevated.
 - `powercfg` reports: `/batteryreport`, `/energy`, `/list` run unelevated.
+- `Get-WUIsRebootRequired` does not exist in PSWindowsUpdate — the correct cmdlet is `Get-WURebootStatus` (use `-Silent` for a plain `$true`/`$false`); `$true` means a reboot is required. `usoclient` is built into Windows but undocumented by Microsoft.
 
 ## Workflow
 

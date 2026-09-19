@@ -30,6 +30,32 @@ A quick-reference guide for essential Windows 11 PowerShell commands, covering s
 
 > **Note:** The Windows Update section uses [PSWindowsUpdate](https://www.powershellgallery.com/packages/PSWindowsUpdate), a third-party module from the PowerShell Gallery — the guide includes installation steps.
 
+### Windows Update workflow
+
+For **any** Windows Update (monthly patches or major OS upgrades), follow this order to watch live progress and avoid premature reboots — full details in [`windows-update-in-powershell.md`](windows-update-in-powershell.md):
+
+1. **Install** (from an elevated session):
+   - Standard updates — installs everything with live verbose logging, no auto-reboot:
+     ```powershell
+     Install-WindowsUpdate -AcceptAll -Verbose
+     ```
+   - Major OS upgrades (e.g. Insider Previews) — trigger the native Windows Update engine directly:
+     ```powershell
+     usoclient StartInteractiveScan
+     ```
+     > **Caveat:** `usoclient` is built into Windows but Microsoft does not document it officially. To watch progress, tail the CBS log from a second window:
+     > `Get-Content "C:\Windows\Logs\CBS\CBS.log" -Wait -Tail 20`
+2. **Verify the reboot status** before restarting — returns plain `$true`/`$false`:
+   ```powershell
+   Get-WURebootStatus -Silent
+   ```
+   - `$true` — a reboot is required to complete the installation. Proceed.
+   - `$false` — no reboot is pending; the installation is complete without one.
+3. **Reboot** once the check confirms it is required:
+   ```powershell
+   Restart-Computer -Force
+   ```
+
 ## Contents
 
 | # | Category |

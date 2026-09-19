@@ -21,22 +21,24 @@ usoclient StartInteractiveScan
 ```
 *(Optional: If using Option B, open a second window and run `Get-Content "C:\Windows\Logs\CBS\CBS.log" -Wait -Tail 20` to watch the live background installation logs).*
 
+> **Caveat:** `usoclient` is built into Windows but Microsoft does not document it officially — its behavior can change between Windows versions without notice.
+
 ---
 
 ## Step 2: Verify the Reboot Status
-Before restarting, verify that the system has completely finished writing the update files to your drive. 
+Before restarting, check whether the Windows Update engine requires a reboot to finish staging the installed updates:
 
 ```powershell
-Get-WUIsRebootRequired
+Get-WURebootStatus -Silent
 ```
 
-* **If `$false`:** The background installation engine is still working. **Do not reboot.**
-* **If `$true`:** The installation is 100% complete and safely staged. Proceed to Step 3.
+* **If `$true`:** A reboot is required to complete the installation. Proceed to Step 3.
+* **If `$false`:** No reboot is pending — the installation is complete without one.
 
 ---
 
 ## Step 3: Trigger the Final Reboot
-Once the previous step confirms `$true`, safely force the system restart:
+Once the previous step returns `$true`, safely force the system restart:
 
 ```powershell
 Restart-Computer -Force

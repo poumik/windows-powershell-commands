@@ -133,6 +133,9 @@ Get-WUHistory
 # Check Windows Update installer status
 Get-WUInstallerStatus
 
+# Check if a reboot is required to complete installed updates (-Silent returns plain $true/$false)
+Get-WURebootStatus -Silent
+
 # Hide an update by KB article ID
 Hide-WindowsUpdate -KBArticleID KB123456
 
