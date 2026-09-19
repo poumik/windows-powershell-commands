@@ -9,7 +9,7 @@ A comprehensive reference guide for essential Windows 11 PowerShell commands, co
 ## Compatibility: PowerShell 5.1 vs 7+
 Windows 11 ships with **Windows PowerShell 5.1** as the default. **PowerShell 7+** is a separate install (`winget install Microsoft.PowerShell`) that adds newer cmdlets and fixes.
 
-- Commands marked **(PS 7+)** will not run in 5.1.
+- Commands marked **(PS 6+)** or **(PS 7+)** will not run in 5.1 (e.g. `Get-Uptime` was introduced in PowerShell 6.0).
 - Check your version with `$PSVersionTable.PSVersion`.
 - Each section heading is followed by a **Permission** tag: **Administrator**, **None (read-only)**, or **Mixed** (queries are read-only, changes need elevation).
 - Some Windows-only modules (`Get-Net*`, `Get-Mp*`, `Get-BitLocker*`, `Get-ScheduledTask`, `Microsoft.PowerShell.LocalAccounts`, etc.) may not load in PowerShell 7+. If a cmdlet is missing in PS 7+, run it in Windows PowerShell 5.1 or verify the module is available.
@@ -104,18 +104,21 @@ winget uninstall "Program Name"
 
 > **Permission:** Administrator
 
-`PSWindowsUpdate` is a third-party module from the PowerShell Gallery, not a built-in cmdlet. It allows full management of Windows Updates via CLI.
+`PSWindowsUpdate` is a third-party module from the PowerShell Gallery, not a built-in cmdlet. It allows full management of Windows Updates via CLI. For a complete install → verify → reboot workflow, see [windows-update-in-powershell.md](windows-update-in-powershell.md).
 
 ```powershell
 # Check if the module is already available on your system
 Get-Module -ListAvailable PSWindowsUpdate
 
-# If Install-Module fails on PowerShell 5.1, bootstrap NuGet and TLS 1.2 first
-Install-PackageProvider -Name NuGet -Force
+# If Install-Module fails on PowerShell 5.1, enable TLS 1.2 first, then bootstrap NuGet
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+Install-PackageProvider -Name NuGet -Force
 
 # Install the Windows Update module (requires Administrator)
 Install-Module -Name PSWindowsUpdate -Force
+
+# Import the module into the current session
+Import-Module PSWindowsUpdate
 
 # Check for available Windows updates
 Get-WindowsUpdate
@@ -139,8 +142,8 @@ Get-WURebootStatus -Silent
 # Hide an update by KB article ID
 Hide-WindowsUpdate -KBArticleID KB123456
 
-# Uninstall an update by KB article ID
-Uninstall-WindowsUpdate -KBArticleID KB123456
+# Uninstall an update by KB article ID (canonical cmdlet; alias: Get-WUUninstall)
+Remove-WindowsUpdate -KBArticleID KB123456
 ```
 
 ---
@@ -150,11 +153,15 @@ Uninstall-WindowsUpdate -KBArticleID KB123456
 > **Permission:** Administrator
 
 ```powershell
-# Scan and repair corrupted system files (System File Checker)
+# Repair the Windows image from Windows Update first (DISM - recommended before SFC)
+DISM /Online /Cleanup-Image /RestoreHealth
+
+# Scan and repair corrupted system files (System File Checker - run after DISM)
 sfc /scannow
 
-# Repair the Windows image from Windows Update if SFC fails (DISM)
-DISM /Online /Cleanup-Image /RestoreHealth
+# PowerShell-native equivalent of the DISM command above
+# Note: Repair-WindowsImage is a Windows PowerShell 5.1 cmdlet; it is not available in PowerShell 7+.
+Repair-WindowsImage -Online -RestoreHealth
 
 # Empty the Recycle Bin without prompting for confirmation
 Clear-RecycleBin -Force
@@ -186,11 +193,14 @@ Get-CimInstance Win32_QuickFixEngineering
 # Show installed hotfixes
 Get-HotFix
 
-# Show how long the computer has been running (Uptime) - PowerShell 7+ only
+# Show how long the computer has been running (Uptime) - PowerShell 6 or newer
 Get-Uptime
 
-# Uptime alternative that also works in Windows PowerShell 5.1
+# Show only the last boot time (works in Windows PowerShell 5.1)
 (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
+
+# Uptime as a duration - also works in Windows PowerShell 5.1
+(Get-Date) - (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
 
 # List the top 10 processes consuming the most Memory (RAM)
 Get-Process | Sort-Object WorkingSet -Descending | Select-Object -First 10
@@ -236,7 +246,7 @@ Set-Service -Name Spooler -StartupType Automatic
 
 ## 6. Networking
 
-> **Permission:** None — these are read-only queries and per-user actions; `Clear-DnsClientCache` is equivalent to `ipconfig /flushdns` and works unelevated.
+> **Permission:** Mixed — queries and `Clear-DnsClientCache` (≈ `ipconfig /flushdns`) work unelevated; `Set-DnsClientServerAddress` requires Administrator. Confirm the interface alias with `Get-NetAdapter` before changing it.
 
 ```powershell
 # Test whether a host responds (Ping replacement)
@@ -263,8 +273,11 @@ Get-NetIPConfiguration
 # Show DNS server addresses
 Get-DnsClientServerAddress
 
-# Set DNS server addresses for an interface
+# Set DNS server addresses for an interface (requires Administrator; confirm the alias with Get-NetAdapter first)
 Set-DnsClientServerAddress -InterfaceAlias "Ethernet" -ServerAddresses 1.1.1.1,8.8.8.8
+
+# Restore DNS server addresses to automatic (DHCP)
+Set-DnsClientServerAddress -InterfaceAlias "Ethernet" -ResetServerAddresses
 
 # Show physical and virtual network adapters
 Get-NetAdapter
@@ -356,6 +369,12 @@ Get-WinEvent -FilterHashtable @{ LogName = 'System'; Level = 1, 2 } -MaxEvents 5
 
 # Show recent critical/error/warning events from the last 24 hours
 Get-WinEvent -FilterHashtable @{ LogName = 'System'; Level = 1, 2, 3; StartTime = (Get-Date).AddDays(-1) }
+
+# Filter by specific event IDs (IDs are only unique within a log/provider)
+Get-WinEvent -FilterHashtable @{ LogName = 'System'; Id = 41, 6008 } -MaxEvents 50
+
+# Filter by event provider (useful because IDs collide across sources)
+Get-WinEvent -FilterHashtable @{ LogName = 'System'; ProviderName = 'Microsoft-Windows-Kernel-Power'; Id = 41 } -MaxEvents 20
 ```
 
 Common event IDs worth checking:
@@ -398,12 +417,15 @@ Get-StorageReliabilityCounter
 # Scan a volume for file system errors (read-only check, no repair)
 Repair-Volume -DriveLetter C -Scan
 
-# Initialize, partition, and format a new disk (examples; verify disk numbers first)
-Initialize-Disk -Number 1
-New-Partition -DiskNumber 1 -UseMaximumSize -AssignDriveLetter
-Format-Volume -DriveLetter D -FileSystem NTFS -Confirm:$false
+# WARNING: the following commands destroy data. Verify disk numbers with Get-Disk / Get-Partition / Get-Volume first.
 
-# Resize a partition
+# Initialize, partition, and format a new disk
+# Note: -AssignDriveLetter picks the next free letter (not guaranteed to be D:),
+# so pipe the new partition into Format-Volume instead of formatting a guessed drive letter.
+Initialize-Disk -Number 1
+New-Partition -DiskNumber 1 -UseMaximumSize -AssignDriveLetter | Format-Volume -FileSystem NTFS -NewFileSystemLabel "Data"
+
+# Resize a partition (warning: -Size sets the new size — a value smaller than the current size shrinks the partition and its data)
 Resize-Partition -DriveLetter C -Size 100GB
 ```
 
@@ -438,7 +460,12 @@ Rename-Item "C:\file.txt" "newfile.txt"
 
 # Remove/Delete a file or folder
 Remove-Item "C:\file.txt"
+
+# Destructive: permanently removes a folder and everything in it, without prompting
 Remove-Item "C:\Temp\Folder" -Recurse -Force
+
+# Preview a destructive operation before running it (-WhatIf shows what would happen)
+Remove-Item "C:\Temp\Folder" -Recurse -Force -WhatIf
 
 # Show the text contents of a file
 Get-Content "C:\file.txt"
@@ -465,8 +492,12 @@ Get-ChildItem -Path C:\ -Recurse -File -ErrorAction SilentlyContinue |
 # List all local users
 Get-LocalUser
 
-# Create a new local user
+# Create a new local user (lab/testing only: -NoPassword creates a passwordless account, which is a security risk)
 New-LocalUser -Name "TestUser" -Description "Temporary account" -NoPassword
+
+# Create a local user with a password (normal use)
+$password = Read-Host "Enter password" -AsSecureString
+New-LocalUser -Name "ExampleUser" -Password $password
 
 # Add a user to the Administrators group
 Add-LocalGroupMember -Group "Administrators" -Member "TestUser"
@@ -591,6 +622,8 @@ Get-BitLockerVolume
 (Get-BitLockerVolume -MountPoint C).KeyProtector
 
 # Enable BitLocker on the C: drive with a recovery password
+# WARNING: save the recovery key somewhere safe (print, USB, cloud) BEFORE encrypting.
+# Do not keep the only copy on the encrypted computer.
 Enable-BitLocker -MountPoint C -RecoveryPasswordProtector
 
 # Back up the recovery password to Microsoft Entra ID (work/school accounts;
@@ -612,8 +645,12 @@ Resume-BitLocker -MountPoint C
 
 > **Permission:** None for your own files.
 
+> **Note:** `Compress-Archive` also ignores hidden files and folders. For hidden files or archives with very large content, use a dedicated archiving tool or the .NET `System.IO.Compression` API instead.
+
 ```powershell
 # Compress a folder into a ZIP archive
+# Note: Compress-Archive uses System.IO.Compression.ZipArchive, which limits files to 2 GB
+# (applies to Windows PowerShell 5.1 and PowerShell 7+ alike).
 Compress-Archive -Path "C:\source\folder" -DestinationPath "C:\backup\archive.zip" -Force
 
 # Add/refresh files in an existing archive
@@ -633,22 +670,24 @@ Get-FileHash "C:\downloads\setup.exe" -Algorithm SHA256
 
 ## 17. Restart, Shutdown & Power Reports
 
-> **Permission:** Mixed — local restart/shutdown works for standard users; remote restarts require WinRM and appropriate permissions; the `powercfg` reports shown (`/batteryreport`, `/energy`, `/list`) run unelevated.
+> **Permission:** Mixed — local restart/shutdown works for standard users; remote restarts require appropriate permissions (DCOM by default in Windows PowerShell 5.1, WSMan in PowerShell 7+); the `powercfg` reports shown (`/batteryreport`, `/energy`, `/list`) are not documented by Microsoft as requiring elevation — run an elevated session if a report fails.
 
 ```powershell
-# Restart the computer (add -Force to force close applications)
+# Restart the computer (add -Force to force close applications without saving)
 Restart-Computer -Force
 
 # Shut down the computer
 Stop-Computer -Force
 
-# Restart or shut down a remote computer (requires WinRM/remoting enabled)
+# Restart or shut down a remote computer
+# Note: uses DCOM in Windows PowerShell 5.1 (remoting not required); uses WSMan in PowerShell 7+ (WinRM required)
 Restart-Computer -ComputerName "PC01" -Force
 
 # Generate a battery health report (laptops) - writes an HTML file
 powercfg /batteryreport /output "C:\Temp\battery-report.html"
 
-# Analyze energy efficiency issues (runs a 60-second trace)
+# Analyze energy efficiency issues (runs a 60-second trace; run when the computer is idle)
+# If the report fails unelevated, run from an elevated session.
 powercfg /energy /output "C:\Temp\energy-report.html"
 
 # Show all configured power plans and the active one
@@ -664,6 +703,15 @@ powercfg /list
 ```powershell
 # Enable PowerShell Remoting on the local machine (run on the target computer)
 Enable-PSRemoting -Force
+
+# Same, but also for machines on a Public network profile (e.g. client SKUs)
+Enable-PSRemoting -SkipNetworkProfileCheck -Force
+
+# Show the TrustedHosts list (needed for workgroup remoting, where Kerberos is unavailable)
+Get-Item WSMan:\localhost\Client\TrustedHosts
+
+# Add a computer to TrustedHosts (warning: reduces authentication security; never set to "*")
+Set-Item WSMan:\localhost\Client\TrustedHosts -Value "PC01" -Force
 
 # Open an interactive remote session on another computer
 Enter-PSSession -ComputerName "PC01"
@@ -684,7 +732,10 @@ Invoke-Command -ComputerName "PC01", "PC02" -ScriptBlock { Get-Volume }
 Invoke-Command -ComputerName (Get-Content "C:\Temp\computers.txt") -ScriptBlock { Get-Volume }
 
 # Run remote command as a background job
-Invoke-Command -ComputerName "PC01" -ScriptBlock { Get-Process } -AsJob
+$job = Invoke-Command -ComputerName "PC01" -ScriptBlock { Get-Process } -AsJob
+
+# Retrieve the results of a remote background job
+Receive-Job -Job $job
 
 # Copy files to and from a remote session
 Copy-Item -Path "C:\Local\file.txt" -Destination "C:\Remote\" -ToSession $session

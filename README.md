@@ -17,7 +17,7 @@ A quick-reference guide for essential Windows 11 PowerShell commands, covering s
    ```
    > **Note:** `winget` may not be present on every Windows 11 image (e.g., LTSC or debloated builds). Check availability first with `winget --version`.
 
-   Commands marked **(PS 7+)** in the guide only run on PowerShell 7 or newer.
+   Commands marked **(PS 6+)** or **(PS 7+)** in the guide only run on PowerShell 6/7 or newer (e.g. `Get-Uptime` was introduced in PowerShell 6.0).
 
    > **Compatibility note:** Some Windows-only modules (`Get-Net*`, `Get-Mp*`, `Get-BitLocker*`, `Get-ScheduledTask`, `Microsoft.PowerShell.LocalAccounts`, etc.) may not load in PowerShell 7+. If a command is missing in PS 7+, try running it in Windows PowerShell 5.1, or verify the module is available for your PowerShell version.
 4. **Mind the permission tags** — each section of the guide is tagged so you know what needs elevation:
@@ -35,16 +35,18 @@ A quick-reference guide for essential Windows 11 PowerShell commands, covering s
 For **any** Windows Update (monthly patches or major OS upgrades), follow this order to watch live progress and avoid premature reboots — full details in [`windows-update-in-powershell.md`](windows-update-in-powershell.md):
 
 1. **Install** (from an elevated session):
-   - Standard updates — installs everything with live verbose logging, no auto-reboot:
+   - Standard updates — installs everything with live verbose logging, no reboot prompt or auto-reboot:
      ```powershell
-     Install-WindowsUpdate -AcceptAll -Verbose
+     Install-WindowsUpdate -AcceptAll -IgnoreReboot -Verbose
      ```
    - Major OS upgrades (e.g. Insider Previews) — trigger the native Windows Update engine directly:
      ```powershell
      usoclient StartInteractiveScan
      ```
-     > **Caveat:** `usoclient` is built into Windows but Microsoft does not document it officially. To watch progress, tail the CBS log from a second window:
+     > **Caveat:** `usoclient` is undocumented, unsupported, and build-dependent — it triggers a scan only and may do nothing on newer builds. To watch progress, tail the CBS log from a second window:
      > `Get-Content "C:\Windows\Logs\CBS\CBS.log" -Wait -Tail 20`
+     >
+     > For supported troubleshooting, run `Get-WindowsUpdateLog` to generate a readable log from the event traces.
 2. **Verify the reboot status** before restarting — returns plain `$true`/`$false`:
    ```powershell
    Get-WURebootStatus -Silent
@@ -53,8 +55,9 @@ For **any** Windows Update (monthly patches or major OS upgrades), follow this o
    - `$false` — no reboot is pending; the installation is complete without one.
 3. **Reboot** once the check confirms it is required:
    ```powershell
-   Restart-Computer -Force
+   Restart-Computer
    ```
+   `-Force` closes running apps without saving — use only if you accept that.
 
 ## Contents
 
