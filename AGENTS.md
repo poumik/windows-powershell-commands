@@ -20,7 +20,7 @@ Guidance for AI coding agents (Copilot, Codex, Claude, OpenCode, etc.) maintaini
 - Every section begins with a `> **Permission:**` blockquote tag: **Administrator**, **None (read-only)**, or **Mixed** (queries read-only, changes need elevation). Keep these tags accurate when adding or changing commands.
 - Each section heading contains an anchor link; the README table of contents links to them. If you rename a section, update the README links too.
 - The document has an internal **Contents** list (near the top) and a **Quick Reference** table — update both when adding a new section.
-- A top-level note explains PowerShell 5.1 vs 7+ compatibility. Commands that only exist in PowerShell 7+ must be marked **(PS 7+)** in their comment.
+- A top-level note explains PowerShell 5.1 vs 7+ compatibility. Commands that only exist in newer PowerShell must be marked **(PS 6+)** or **(PS 7+)** in their comment, with the lowest version that provides them (e.g. `Get-Uptime` is **(PS 6+)** per Microsoft docs).
 - Code fences use ` ```powershell ` (or plain ` ``` ` where appropriate). Keep one comment per command, in the established style.
 
 ### Style rules
@@ -55,6 +55,13 @@ This repo's value is **correctness**. Before adding or changing a command, verif
 - `Clear-DnsClientCache` runs unelevated.
 - `powercfg` reports: `/batteryreport`, `/energy`, `/list` run unelevated.
 - `Get-WUIsRebootRequired` does not exist in PSWindowsUpdate — the correct cmdlet is `Get-WURebootStatus` (use `-Silent` for a plain `$true`/`$false`); `$true` means a reboot is required. `usoclient` is built into Windows but undocumented by Microsoft.
+- `Uninstall-WindowsUpdate` does not exist in PSWindowsUpdate — the canonical cmdlet is `Remove-WindowsUpdate` (alias `Get-WUUninstall`).
+- `Get-Uptime` was introduced in PowerShell 6.0, so it is marked **(PS 6+)**, not (PS 7+).
+- DISM `/RestoreHealth` should be listed before `sfc /scannow` (Microsoft's recommended order); `Repair-WindowsImage` is the 5.1-only native equivalent.
+- `Restart-Computer -ComputerName` uses DCOM by default in Windows PowerShell 5.1 (no WinRM needed) and WSMan in PowerShell 7+.
+- `powercfg /energy` elevation is not documented by Microsoft (only `/systemsleepdiagnostics` and `/systempowerreport` are documented as requiring admin) — keep the softened wording.
+- `Compress-Archive` uses `System.IO.Compression.ZipArchive`, which limits files to 2 GB — this applies to PowerShell 5.1 and 7+ alike.
+- `New-Partition -AssignDriveLetter` does not guarantee a specific letter — pipe the partition into `Format-Volume` instead of formatting a guessed drive letter.
 
 ## Workflow
 
