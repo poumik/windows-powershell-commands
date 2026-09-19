@@ -697,7 +697,7 @@ Get-FileHash "C:\downloads\setup.exe" -Algorithm SHA256
 # Restart the computer (add -Force to force close applications without saving — unsaved work is lost)
 Restart-Computer -Force
 
-- Shut down the computer (-Force closes applications without saving — unsaved work is lost)
+- Shut down the computer
 Stop-Computer -Force
 
 # Restart or shut down a remote computer
